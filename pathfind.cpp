@@ -102,7 +102,9 @@ Map RandomMap(int w, int h)
 		return (cnt*100) / m.data.size();
 	};
 
-	while (fillp() > 50)
+	int lim = uniform_int_distribution<int>(30,70)(generator);
+
+	while (fillp() > lim)
 	{
 		int startx = uniform_int_distribution<int>(1,w-2)(generator);
 		int starty = uniform_int_distribution<int>(1,h-2)(generator);
@@ -289,7 +291,7 @@ SearchResult FindGoalFrom(Pos start)
 			{
 				if (!smii->second.paths[d]) continue;
 				Pos p = smii->first + deltas[d];
-				//if (!valid(p)) continue;
+				//if (!m.valid(p)) continue;
 				SMII cand = search_map.find(p);
 				if (cand == search_map.end()) continue;
 				if (cand->second.visited) continue;
@@ -300,6 +302,7 @@ SearchResult FindGoalFrom(Pos start)
 
 		if (candidates.empty()) break;
 
+		found.clear();
 		for (SMII smii : candidates)
 		{
 			smii->second.visited = true;
@@ -369,7 +372,7 @@ namespace {
 
 int main()
 {
-
+	cout << FancyNumberFormatter(2500) << "s\n";
 	Map bsf_map = RandomMap(25,25);
 	MakeMap(bsf_map);
 	SearchResult bsf_sr = FindGoalFrom(bsf_map.start);
@@ -377,6 +380,7 @@ int main()
 
 	for (long long i=0; ;++i)
 	{
+		cout << i << "\r" << flush;
 		auto t1 = std::chrono::high_resolution_clock::now();
 		auto m = RandomMap(25,25);
 		auto t2 = std::chrono::high_resolution_clock::now();
