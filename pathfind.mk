@@ -59,7 +59,7 @@ AS       := /usr/bin/as
 ##
 ## User defined environment variables
 ##
-Objects0=$(IntermediateDirectory)/pathfind.cpp$(ObjectSuffix) 
+Objects0=$(IntermediateDirectory)/pathfind.cpp$(ObjectSuffix) $(IntermediateDirectory)/fancynumber.cpp$(ObjectSuffix) 
 
 
 
@@ -93,6 +93,14 @@ $(IntermediateDirectory)/pathfind.cpp$(DependSuffix): pathfind.cpp
 
 $(IntermediateDirectory)/pathfind.cpp$(PreprocessSuffix): pathfind.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/pathfind.cpp$(PreprocessSuffix) "pathfind.cpp"
+
+$(IntermediateDirectory)/fancynumber.cpp$(ObjectSuffix): fancynumber.cpp $(IntermediateDirectory)/fancynumber.cpp$(DependSuffix)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/sp2danny/extra/pathfind/fancynumber.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/fancynumber.cpp$(ObjectSuffix) $(IncludePath)
+$(IntermediateDirectory)/fancynumber.cpp$(DependSuffix): fancynumber.cpp
+	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/fancynumber.cpp$(ObjectSuffix) -MF$(IntermediateDirectory)/fancynumber.cpp$(DependSuffix) -MM "fancynumber.cpp"
+
+$(IntermediateDirectory)/fancynumber.cpp$(PreprocessSuffix): fancynumber.cpp
+	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/fancynumber.cpp$(PreprocessSuffix) "fancynumber.cpp"
 
 
 -include $(IntermediateDirectory)/*$(DependSuffix)

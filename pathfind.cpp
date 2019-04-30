@@ -10,6 +10,8 @@
 #include <iomanip>
 #include <set>
 
+#include "fancynumber.hpp"
+
 using namespace std;
 
 struct Pos
@@ -132,7 +134,7 @@ Map RandomMap(int w, int h)
 		return (cnt*100) / m.data.size();
 	};
 
-	int lim = uniform_int_distribution<int>(30,70)(generator);
+	int lim = uniform_int_distribution<int>(30,55)(generator);
 
 	//int i=0;
 	while (fillp() > lim)
@@ -170,58 +172,6 @@ Map RandomMap(int w, int h)
 	return m;
 }
 
-std::string FancyNumberFormatter(float f, int p=4)
-{
-	float of = f;
-	if (f == 0)
-		return "0 ";
-	bool neg = false;
-	if (f<0) { neg = true; f=-f; }
-	if (f>=1.0 && f<=1000.0)
-	{
-		std::stringstream ss;
-		ss << std::setprecision(p) << f;
-		return (neg?"-":"")+ss.str()+" ";
-	}
-	else if (f<1.0)
-	{
-		int i = 0;
-		while (f<1.0)
-		{
-			f *= 1000.0;
-			++i;
-		}
-		static const std::vector<std::string> pref = { "", "m", "μ", "n", "p", "f", "a", "z", "y" };
-		if (i >= (int)pref.size())
-		{
-			std::stringstream ss;
-			ss << std::setprecision(p) << std::scientific << of << " ";
-			return ss.str();
-		}
-		std::stringstream ss;
-		ss << std::setprecision(p) << f;
-		return (neg?"-":"")+ss.str()+" "+pref[i];
-	}
-	else
-	{
-		int i = 0;
-		while (f>=1000.0)
-		{
-			f /= 1000.0;
-			++i;
-		}
-		static const std::vector<std::string> pref = { "", "k", "M", "G", "T", "P", "E", "Z", "Y" };
-		if (i >= (int)pref.size())
-		{
-			std::stringstream ss;
-			ss << std::setprecision(p) << std::scientific << of << " ";
-			return ss.str();
-		}
-		std::stringstream ss;
-		ss << std::setprecision(p) << f;
-		return (neg?"-":"")+ss.str()+" "+pref[i];
-	}
-}
 
 /*Map RandomMapOld(int w, int h)
 {
@@ -405,10 +355,13 @@ namespace {
 	std::chrono::duration<long double> tmp, dur, gen, wrm, wfg;
 }
 
+const int SH = 9;
+const int SF = 1 << SH;
+const int WW = 7*SF, HH = 3*SF;
+
 int main()
 {
-	cout << FancyNumberFormatter(2500) << "s\n";
-	Map bsf_map = RandomMap(25,25);
+	Map bsf_map = RandomMap(WW,HH);
 	MakeMap(bsf_map);
 	SearchResult bsf_sr = FindGoalFrom(bsf_map.start);
 	upd(bsf_sr);
@@ -417,7 +370,7 @@ int main()
 	{
 		cout << i << "\r" << flush;
 		auto t1 = std::chrono::high_resolution_clock::now();
-		auto m = RandomMap(25,25);
+		auto m = RandomMap(WW,HH);
 		auto t2 = std::chrono::high_resolution_clock::now();
 		tmp = t2-t1;
 		if (tmp>wrm) wrm=tmp;
@@ -435,13 +388,14 @@ int main()
 		{
 			bsf_map = m;
 			bsf_sr = sr;
-			bsf_map.print(cout);
+			//bsf_map.print(cout);
 			cout << sr.message << endl;
 			dop = true;
 		}
 		//if ((i%128)==0) dop=true;
 		if (dop)
 		{
+			cout << "size    : " << WW << "x" << HH << endl;
 			cout << "errorp  : " << (error*100.0f) / attempt << endl;
 			cout << "findp   : " << (succ*100.0f) / attempt << endl;
 			cout << "apl     : " << (accu*1.0f) / succ << endl;

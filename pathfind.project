@@ -4,6 +4,8 @@
   <Dependencies/>
   <VirtualDirectory Name="src">
     <File Name="pathfind.cpp"/>
+    <File Name="fancynumber.cpp"/>
+    <File Name="fancynumber.hpp"/>
   </VirtualDirectory>
   <Settings Type="Executable">
     <GlobalSettings>
