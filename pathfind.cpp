@@ -8,6 +8,7 @@
 #include <sstream>
 #include <chrono>
 #include <iomanip>
+#include <set>
 
 using namespace std;
 
@@ -72,6 +73,7 @@ Dir other(Dir d)
 
 struct SearchMapItem
 {
+	Pos pos;
 	bool traversble;
 	bool goal;
 	bool visited;
@@ -79,8 +81,36 @@ struct SearchMapItem
 	bool paths[d_end];
 };
 
-map<Pos,SearchMapItem> search_map;
-typedef map<Pos,SearchMapItem>::iterator SMII;
+struct SearchMap
+{
+	void Dim(int,int);
+	SearchMapItem& operator[](Pos);
+	SearchMapItem* find(Pos);
+private:
+	std::vector<SearchMapItem> data;
+	int w,h;
+};
+
+void SearchMap::Dim(int ww, int hh)
+{
+	w=ww; h=hh;
+	data.resize(w*h);
+}
+SearchMapItem& SearchMap::operator[](Pos p)
+{
+	return data[p.x + p.y*w];
+}
+
+SearchMapItem* SearchMap::find(Pos p)
+{
+	if (p.x<0) return nullptr;
+	if (p.x>=w) return nullptr;
+	if (p.y<0) return nullptr;
+	if (p.y>=h) return nullptr;
+	return data.data() + (p.x + p.y*w);
+}
+
+typedef SearchMapItem* SMII;
 
 std::random_device rdev;
 std::default_random_engine generator{rdev()};
@@ -104,8 +134,10 @@ Map RandomMap(int w, int h)
 
 	int lim = uniform_int_distribution<int>(30,70)(generator);
 
+	//int i=0;
 	while (fillp() > lim)
 	{
+		//++i;
 		int startx = uniform_int_distribution<int>(1,w-2)(generator);
 		int starty = uniform_int_distribution<int>(1,h-2)(generator);
 		int length = uniform_int_distribution<int>(0,(w+h)/3)(generator);
@@ -128,6 +160,7 @@ Map RandomMap(int w, int h)
 		}
 		lft = !lft;
 	}
+	//std::cout << i << std::endl;
 	m.start.x = uniform_int_distribution<int>(1,w-2)(generator);
 	m.start.y = uniform_int_distribution<int>(1,h-2)(generator);
 	m.at(m.start.x, m.start.y) = FLOOR;
@@ -190,7 +223,7 @@ std::string FancyNumberFormatter(float f, int p=4)
 	}
 }
 
-Map RandomMapOld(int w, int h)
+/*Map RandomMapOld(int w, int h)
 {
 	Map m;
 	m.width = w; m.height = h;
@@ -210,15 +243,18 @@ Map RandomMapOld(int w, int h)
 	m.start.x = uniform_int_distribution<int>(0,w-1)(generator);
 	m.start.y = uniform_int_distribution<int>(0,h-1)(generator);
 	return m;
-}
+}*/
+
+SearchMap search_map;
 
 void MakeMap(const Map& map)
 {
-	search_map.clear();
+	search_map.Dim(map.width, map.height);
 	Pos p;
 	for (p.y=0; p.y<map.height; ++p.y) for (p.x=0; p.x<map.width; ++p.x) 
 	{
 		SearchMapItem smi;
+		smi.pos = p;
 		smi.visited = false;
 		smi.came_from = d_end;
 		if (map.at(p) == WALL)
@@ -251,7 +287,6 @@ struct SearchResult
 	std::vector<Dir> path;
 	std::string message;
 	int operator<=>(const SearchResult&) const;
-
 };
 
 int SearchResult::operator<=>(const SearchResult& rhs) const
@@ -266,62 +301,62 @@ int SearchResult::operator<=>(const SearchResult& rhs) const
 
 SearchResult FindGoalFrom(Pos start)
 {
-	vector<SMII> found;
+	set<SMII> found;
 
 	{
 		SMII smii = search_map.find(start);
 
-		if (smii == search_map.end()) { return { false, true, {}, "starting outside map"s }; }
-		if (smii->second.goal)        { return { true, false, {}, "already at target"s }; }
-		if (!smii->second.traversble) { return { false, true, {}, "starting in a wall"s }; }
+		if (smii == nullptr)   { return { false, true, {}, "starting outside map"s }; }
+		if (smii->goal)        { return { true, false, {}, "already at target"s }; }
+		if (!smii->traversble) { return { false, true, {}, "starting in a wall"s }; }
 
-		smii->second.visited = true;
-		found.push_back(smii);
+		smii->visited = true;
+		found.insert(smii);
 	}
 
 	bool did_find = false;
+	SMII fpos;
 
 	while (!did_find)
 	{
-		vector<SMII> candidates;
+		set<SMII> candidates;
 
 		for (SMII smii : found)
 		{
 			for (Dir d = d_beg; d != d_end; ++d)
 			{
-				if (!smii->second.paths[d]) continue;
-				Pos p = smii->first + deltas[d];
+				if (!smii->paths[d]) continue;
+				Pos p = smii->pos + deltas[d];
 				//if (!m.valid(p)) continue;
 				SMII cand = search_map.find(p);
-				if (cand == search_map.end()) continue;
-				if (cand->second.visited) continue;
-				cand->second.came_from = d;
-				candidates.push_back(cand);
+				if (cand == nullptr) continue;
+				if (cand->visited) continue;
+				cand->came_from = d;
+				candidates.insert(cand);
 			}
 		}
 
 		if (candidates.empty()) break;
 
-		found.clear();
 		for (SMII smii : candidates)
 		{
-			smii->second.visited = true;
-			found.push_back(smii);
-			if (smii->second.goal) { did_find = true; break; }
+			smii->visited = true;
+			if (smii->goal) { fpos=smii; did_find = true; break; }
 		}
+		found.swap(candidates);
 	}
 
 	if (!did_find) { return { false, false, {}, "no goal reachable"s }; }
 
-	SMII pos = found.back();
+	SMII pos = fpos;
 
 	vector<Dir> path;
 
-	while (pos->first != start)
+	while (pos->pos != start)
 	{
-		Dir d = pos->second.came_from;
+		Dir d = pos->came_from;
 		path.push_back(d);
-		Pos p = pos->first + deltas[ other(d) ];
+		Pos p = pos->pos + deltas[ other(d) ];
 		pos = search_map.find(p);
 	}
 
@@ -367,7 +402,7 @@ namespace {
 			accu += sr.path.size();
 		}
 	}
-	std::chrono::duration<long double> dur, gen;
+	std::chrono::duration<long double> tmp, dur, gen, wrm, wfg;
 }
 
 int main()
@@ -384,12 +419,16 @@ int main()
 		auto t1 = std::chrono::high_resolution_clock::now();
 		auto m = RandomMap(25,25);
 		auto t2 = std::chrono::high_resolution_clock::now();
-		gen += (t2-t1);
+		tmp = t2-t1;
+		if (tmp>wrm) wrm=tmp;
+		gen += tmp;
 		t1 = std::chrono::high_resolution_clock::now();
 		MakeMap(m);
 		auto sr = FindGoalFrom(m.start);
 		t2 = std::chrono::high_resolution_clock::now();
-		dur += (t2-t1);
+		tmp = t2-t1;
+		if (tmp>wfg) wfg=tmp;
+		dur += tmp;
 		upd(sr);
 		bool dop = false;
 		if (bsf_sr < sr)
@@ -400,7 +439,7 @@ int main()
 			cout << sr.message << endl;
 			dop = true;
 		}
-		if ((i%128)==0) dop=true;
+		//if ((i%128)==0) dop=true;
 		if (dop)
 		{
 			cout << "errorp  : " << (error*100.0f) / attempt << endl;
@@ -408,6 +447,8 @@ int main()
 			cout << "apl     : " << (accu*1.0f) / succ << endl;
 			cout << "avg gen : " << FancyNumberFormatter(gen.count() / attempt) << "s" << endl;
 			cout << "avg dur : " << FancyNumberFormatter(dur.count() / attempt) << "s" << endl;
+			cout << "wrst rm : " << FancyNumberFormatter(wrm.count()) << "s" << endl;
+			cout << "wrst fg : " << FancyNumberFormatter(wfg.count()) << "s" << endl;
 		}
 	}
 }
